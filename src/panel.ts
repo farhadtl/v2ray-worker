@@ -32,12 +32,32 @@ export async function GetPanel(request: Request, env: Env): Promise<Response> {
     const providers = (await env.settings.get("Providers"))?.split("\n").filter(t => t.trim().length > 0) || []
     const countries = (await env.settings.get("Countries"))?.split(",").filter(t => t.trim().length > 0) || []
 
-    let allCountries = await fetch(proxiesUri).then(r => r.text()).then(t => {
-      return t.trim().split("\n").map(t => {
-        const arr = t.split(",")
-        return arr.length > 0 ? arr[1]?.toString().trim().toUpperCase() : ""
-      }).filter(t => t)
+    let allCountries: string[] = []
+
+try {
+  const response = await fetch(proxiesUri)
+
+  if (!response.ok) {
+    throw new Error(
+      `Proxy list request failed: ${response.status}`
+    )
+  }
+
+  const proxyText = await response.text()
+
+  allCountries = proxyText
+    .trim()
+    .split("\n")
+    .map((line) => {
+      const fields = line.split(",")
+      return fields[1]?.trim().toUpperCase() ?? ""
     })
+    .filter(Boolean)
+} catch (error) {
+  console.error("Failed to load proxy list:", error)
+}
+
+allCountries = [...new Set(allCountries)].sort()
     allCountries = [...new Set(allCountries)].sort()
     
     let htmlMessage = ""
